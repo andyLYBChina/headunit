@@ -58,7 +58,7 @@ class LocationUpdateIntent(location: Location): Intent(action) {
         const val action = "${HeadUnit.packageName}.LOCATION_UPDATE"
 
         fun extractLocation(intent: Intent): Location {
-            return intent.getParcelableExtra(LocationManager.KEY_LOCATION_CHANGED)
+            return intent.getParcelableExtra(LocationManager.KEY_LOCATION_CHANGED)!!
         }
     }
 }
