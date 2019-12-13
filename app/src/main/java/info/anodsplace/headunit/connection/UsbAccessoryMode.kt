@@ -1,5 +1,6 @@
 package info.anodsplace.headunit.connection
 
+import android.app.PendingIntent
 import android.hardware.usb.UsbConstants
 import android.hardware.usb.UsbDevice
 import android.hardware.usb.UsbDeviceConnection
@@ -32,7 +33,7 @@ class UsbAccessoryMode(private val usbMgr: UsbManager) {
         val result = switch(connection)
         connection.close()
 
-        AppLog.i("Result: " + result)
+        AppLog.i("Result: $result")
         return result
     }
 
@@ -41,7 +42,7 @@ class UsbAccessoryMode(private val usbMgr: UsbManager) {
         val buffer = ByteArray(2)
         var len = connection.controlTransfer(UsbConstants.USB_DIR_IN or UsbConstants.USB_TYPE_VENDOR, ACC_REQ_GET_PROTOCOL, 0, 0, buffer, 2, USB_TIMEOUT_IN_MS)
         if (len != 2) {
-            AppLog.e("Error controlTransfer len: " + len)
+            AppLog.e("Error controlTransfer len: $len")
             return false
         }
         val acc_ver = Utils.getAccVersion(buffer)
@@ -52,7 +53,7 @@ class UsbAccessoryMode(private val usbMgr: UsbManager) {
             AppLog.e("No support acc")
             return false
         }
-        AppLog.i("acc_ver: " + acc_ver)
+        AppLog.i("acc_ver: $acc_ver")
 
         // Send all accessory identification strings
         initStringControlTransfer(connection, ACC_IDX_MAN, MANUFACTURER)

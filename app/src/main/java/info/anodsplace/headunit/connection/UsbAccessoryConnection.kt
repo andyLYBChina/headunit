@@ -22,7 +22,7 @@ class UsbAccessoryConnection(private val usbMgr: UsbManager, private val device:
     private var endpointOut: UsbEndpoint? = null                   // USB Output endpoint
 
     fun isDeviceRunning(device: UsbDevice): Boolean {
-        synchronized(sLock) {
+        synchronized(sWriteLock) {
             val connected = usbDeviceConnected ?: return false
             return UsbDeviceCompat.getUniqueName(device) == connected.uniqueName
         }
@@ -44,7 +44,7 @@ class UsbAccessoryConnection(private val usbMgr: UsbManager, private val device:
         if (usbDeviceConnection != null) {
             disconnect()
         }
-        synchronized(sLock) {
+        synchronized(sWriteLock) {
             try {
                 usbOpen(device)                                        // Open USB device & claim interface
             } catch (e: UsbOpenException) {
@@ -81,10 +81,10 @@ class UsbAccessoryConnection(private val usbMgr: UsbManager, private val device:
         try {
             val interfaceCount = device.interfaceCount
             if (interfaceCount <= 0) {
-                AppLog.e("interfaceCount: " + interfaceCount)
+                AppLog.e("interfaceCount: $interfaceCount")
                 throw UsbOpenException("No usb interfaces")
             }
-            AppLog.i("interfaceCount: " + interfaceCount)
+            AppLog.i("interfaceCount: $interfaceCount")
             usbInterface = device.getInterface(0)                            // java.lang.ArrayIndexOutOfBoundsException: length=0; index=0
 
             if (!usbDeviceConnection!!.claimInterface(usbInterface, true)) {        // Claim interface, if error...   true = take from kernel
@@ -125,7 +125,7 @@ class UsbAccessoryConnection(private val usbMgr: UsbManager, private val device:
     }
 
     override fun disconnect() {                                           // Release interface and close USB device connection. Called only by usb_disconnect()
-        synchronized(sLock) {
+        synchronized(sWriteLock) {
             if (usbDeviceConnected != null) {
                 AppLog.i(usbDeviceConnected!!.toString())
             }
@@ -162,7 +162,7 @@ class UsbAccessoryConnection(private val usbMgr: UsbManager, private val device:
      * * or negative value for failure
      */
     override fun send(buf: ByteArray, length: Int, timeout: Int): Int {
-        synchronized(sLock) {
+        synchronized(sWriteLock) {
             if (usbDeviceConnected == null) {
                 AppLog.e("Not connected")
                 return -1
@@ -179,7 +179,7 @@ class UsbAccessoryConnection(private val usbMgr: UsbManager, private val device:
     }
 
     override fun recv(buf: ByteArray, length: Int, timeout: Int): Int {
-        synchronized(sLock) {
+        synchronized(sReadLock) {
             if (usbDeviceConnected == null) {
                 AppLog.e("Not connected")
                 return -1
@@ -201,6 +201,7 @@ class UsbAccessoryConnection(private val usbMgr: UsbManager, private val device:
     }
 
     companion object {
-        private val sLock = Object()
+        private val sReadLock = Object()
+        private val sWriteLock = Object()
     }
 }

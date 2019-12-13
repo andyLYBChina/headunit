@@ -1,6 +1,8 @@
 package info.anodsplace.headunit.main
 
+import android.app.PendingIntent
 import android.content.Context
+import android.content.Intent
 import android.hardware.usb.UsbManager
 import android.os.Bundle
 import android.text.Html
@@ -16,6 +18,7 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import info.anodsplace.headunit.R
 import info.anodsplace.headunit.aap.AapService
+import info.anodsplace.headunit.app.UsbAttachedActivity
 import info.anodsplace.headunit.connection.UsbAccessoryMode
 
 import info.anodsplace.headunit.connection.UsbDeviceCompat
@@ -118,13 +121,20 @@ class UsbListFragment : Fragment() {
                 if (device.isInAccessoryMode) {
                     mContext.startService(AapService.createIntent(device.wrappedDevice, mContext))
                 } else {
-                    val usbMode = UsbAccessoryMode(mContext.getSystemService(Context.USB_SERVICE) as UsbManager)
-                    if (usbMode.connectAndSwitch(device.wrappedDevice)) {
-                        Toast.makeText(mContext, "Success", Toast.LENGTH_SHORT).show()
+                    val usbManager = mContext.getSystemService(Context.USB_SERVICE) as UsbManager
+                    if (usbManager.hasPermission(device.wrappedDevice)) {
+                        val usbMode = UsbAccessoryMode(usbManager)
+                        if (usbMode.connectAndSwitch(device.wrappedDevice)) {
+                            Toast.makeText(mContext, "Success", Toast.LENGTH_SHORT).show()
+                        } else {
+                            Toast.makeText(mContext, "Failed", Toast.LENGTH_SHORT).show()
+                        }
+                        notifyDataSetChanged()
                     } else {
-                        Toast.makeText(mContext, "Failed", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(mContext, "USB Permission is missing", Toast.LENGTH_SHORT).show()
+                        usbManager.requestPermission(device.wrappedDevice, PendingIntent.getActivity(
+                            mContext, 500, Intent(mContext, UsbAttachedActivity::class.java), PendingIntent.FLAG_UPDATE_CURRENT))
                     }
-                    notifyDataSetChanged()
                 }
             }
         }

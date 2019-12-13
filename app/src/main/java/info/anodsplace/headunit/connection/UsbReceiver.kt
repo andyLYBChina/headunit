@@ -6,10 +6,11 @@ import android.content.Intent
 import android.content.IntentFilter
 import android.hardware.usb.UsbDevice
 import android.hardware.usb.UsbManager
+import info.anodsplace.headunit.BuildConfig
 
 import info.anodsplace.headunit.utils.AppLog
 
-class UsbReceiver(private val mListener: UsbReceiver.Listener)          // USB Broadcast Receiver enabled by start() & disabled by stop()
+class UsbReceiver(private val mListener: Listener)          // USB Broadcast Receiver enabled by start() & disabled by stop()
     : BroadcastReceiver() {
 
     init {
@@ -26,8 +27,7 @@ class UsbReceiver(private val mListener: UsbReceiver.Listener)          // USB B
         val device: UsbDevice = intent.getParcelableExtra(UsbManager.EXTRA_DEVICE) ?: return
         AppLog.i("USB Intent: $intent")
 
-        val action = intent.action
-        when (action) {
+        when (intent.action) {
             UsbManager.ACTION_USB_DEVICE_DETACHED -> // If detach...
                 mListener.onUsbDetach(device)
             // Handle detached device
@@ -43,7 +43,7 @@ class UsbReceiver(private val mListener: UsbReceiver.Listener)          // USB B
     }
 
     companion object {
-        const val ACTION_USB_DEVICE_PERMISSION = "ca.yyx.hu.ACTION_USB_DEVICE_PERMISSION"
+        const val ACTION_USB_DEVICE_PERMISSION = BuildConfig.APPLICATION_ID + ".ACTION_USB_DEVICE_PERMISSION"
         const val EXTRA_CONNECT = "EXTRA_CONNECT"
 
         fun createFilter(): IntentFilter {

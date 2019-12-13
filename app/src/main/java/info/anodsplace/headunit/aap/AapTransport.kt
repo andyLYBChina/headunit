@@ -27,11 +27,12 @@ class AapTransport(
         private val settings: Settings,
         private val notification: BackgroundNotification,
         private val context: Context)
-    : Handler.Callback, MicRecorder.Listener {
+    : MicRecorder.Listener {
 
     private val aapAudio: AapAudio
     private val aapVideo: AapVideo
-    private val pollThread: HandlerThread = HandlerThread("AapTransport:Handler", Process.THREAD_PRIORITY_AUDIO)
+    private val sendThread: HandlerThread = HandlerThread("AapTransport:Handler::Send", Process.THREAD_PRIORITY_AUDIO)
+    private val pollThread: HandlerThread = HandlerThread("AapTransport:Handler::Poll", Process.THREAD_PRIORITY_AUDIO)
     private val micRecorder: MicRecorder = MicRecorder(settings.micSampleRate, context)
     private val sessionIds = SparseIntArray(4)
     private val startedSensors = HashSet<Int>(4)
@@ -42,7 +43,32 @@ class AapTransport(
     private val modeManager: UiModeManager =  context.getSystemService(UI_MODE_SERVICE) as UiModeManager
     private var connection: AccessoryConnection? = null
     private var aapRead: AapRead? = null
-    private var handler: Handler? = null
+    private var pollHandler: Handler? = null
+    private val pollHandlerCallback = Handler.Callback {
+        val ret = aapRead?.read() ?: -1
+        if (pollHandler == null) {
+            return@Callback false
+        }
+        pollHandler?.let {
+            if (!it.hasMessages(MSG_POLL))
+            {
+                it.sendEmptyMessage(MSG_POLL)
+            }
+        }
+
+        if (ret < 0) {
+            this.quit()
+        }
+        return@Callback true
+    }
+    private var sendHandler: Handler? = null
+    private val sendHandlerCallback = Handler.Callback {
+        this.sendEncryptedMessage(
+                data = it.obj as ByteArray,
+                length = it.arg2
+        )
+        return@Callback true
+    }
 
     val isAlive: Boolean
         get() = pollThread.isAlive
@@ -58,34 +84,6 @@ class AapTransport(
         if (type == Sensors.SensorType.NIGHT_VALUE) {
             send(NightModeEvent(false))
         }
-    }
-
-    override fun handleMessage(msg: Message): Boolean {
-
-        if (msg.what == MSG_SEND) {
-            val size = msg.arg2
-            this.sendEncryptedMessage(msg.obj as ByteArray, size)
-            return true
-        }
-
-        if (msg.what == MSG_POLL) {
-            val ret = aapRead?.read() ?: -1
-            if (handler == null) {
-                return false
-            }
-            handler?.let {
-                if (!it.hasMessages(MSG_POLL))
-                {
-                    it.sendEmptyMessage(MSG_POLL)
-                }
-            }
-
-            if (ret < 0) {
-                this.quit()
-            }
-        }
-
-        return true
     }
 
     private fun sendEncryptedMessage(data: ByteArray, length: Int): Int {
@@ -107,8 +105,9 @@ class AapTransport(
     internal fun quit() {
         micRecorder.listener = null
         pollThread.quit()
+        sendThread.quit()
         aapRead = null
-        handler = null
+        pollHandler = null
     }
 
     internal fun start(connection: AccessoryConnection): Boolean {
@@ -124,8 +123,12 @@ class AapTransport(
         aapRead = AapRead.Factory.create(connection, this, micRecorder, aapAudio, aapVideo, settings, notification, context)
 
         pollThread.start()
-        handler = Handler(pollThread.looper, this)
-        handler!!.sendEmptyMessage(MSG_POLL)
+        sendThread.start()
+        pollHandler = Handler(pollThread.looper, pollHandlerCallback)
+        sendHandler = Handler(pollThread.looper, sendHandlerCallback)
+
+        pollHandler!!.sendEmptyMessage(MSG_POLL)
+
         // Create and start Transport Thread
         return true
     }
@@ -237,14 +240,14 @@ class AapTransport(
     }
 
     fun send(message: AapMessage) {
-        if (handler == null) {
+        if (sendHandler == null) {
             AppLog.e("Handler is null")
         } else {
             if (AppLog.LOG_VERBOSE) {
                 AppLog.v(message.toString())
             }
-            val msg = handler!!.obtainMessage(MSG_SEND, 0, message.size, message.data)
-            handler!!.sendMessage(msg)
+            val msg = sendHandler!!.obtainMessage(MSG_SEND, 0, message.size, message.data)
+            sendHandler!!.sendMessage(msg)
         }
     }
 
