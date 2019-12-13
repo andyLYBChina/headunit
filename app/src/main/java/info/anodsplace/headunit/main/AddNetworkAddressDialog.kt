@@ -46,7 +46,7 @@ class AddNetworkAddressDialog : DialogFragment() {
                         newAddr[2] = strToByte(third.text.toString())
                         newAddr[3] = strToByte(fourth.text.toString())
 
-                        val f = fragmentManager!!.findFragmentByTag(NetworkListFragment.TAG) as NetworkListFragment
+                        val f = parentFragmentManager.findFragmentByTag(NetworkListFragment.TAG) as NetworkListFragment
                         f.addAddress(java.net.InetAddress.getByAddress(newAddr))
                     } catch (e: java.net.UnknownHostException) {
                         AppLog.e(e)

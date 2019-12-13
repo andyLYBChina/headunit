@@ -34,7 +34,7 @@ class StreamVideoExtractor : MediaExtractorInterface {
             }
             val size = nextSample - mSampleOffset
             buffer.clear()
-            buffer.put(mContentData)
+            buffer.put(mContentData!!)
             AppLog.i("readSampleData (offset: %d,next: %d,size: %d,length: %d, flags: 0x%08x)", mSampleOffset, nextSample, size, mContentData!!.size, sampleFlags)
             return size
         }

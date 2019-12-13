@@ -31,7 +31,7 @@ class App : Application() {
 
         AppLog.d( "native library dir ${applicationInfo.nativeLibraryDir}")
 
-        File(applicationInfo.nativeLibraryDir).listFiles().forEach { file ->
+        File(applicationInfo.nativeLibraryDir).listFiles()?.forEach { file ->
             AppLog.d( "   ${file.name}")
         }
 

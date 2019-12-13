@@ -30,8 +30,9 @@ class AapProjectionActivity : SurfaceActivity(), SurfaceHolder.Callback {
 
     private val keyCodeReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) {
-            val event = intent.getParcelableExtra<KeyEvent>(KeyIntent.extraEvent)
-            onKeyEvent(event.keyCode, event.action == KeyEvent.ACTION_DOWN)
+            intent.getParcelableExtra<KeyEvent?>(KeyIntent.extraEvent)?.let { event ->
+                onKeyEvent(event.keyCode, event.action == KeyEvent.ACTION_DOWN)
+            }
         }
     }
 

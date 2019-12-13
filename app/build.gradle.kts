@@ -11,27 +11,28 @@ plugins {
 dependencies {
     implementation("com.google.protobuf:protobuf-java:3.9.1")
 
-    implementation("androidx.activity:activity:1.1.0-rc01")
-    implementation("androidx.fragment:fragment:1.2.0-rc01")
+    implementation("androidx.activity:activity:1.1.0-rc03")
+    implementation("androidx.fragment:fragment:1.2.0-rc03")
+    implementation("androidx.fragment:fragment-ktx:1.2.0-rc03")
     implementation("androidx.media:media:1.2.0-alpha01")
-    implementation("androidx.recyclerview:recyclerview:1.1.0-rc01")
+    implementation("androidx.recyclerview:recyclerview:1.1.0")
     implementation("androidx.localbroadcastmanager:localbroadcastmanager:1.0.0")
 
     // ViewModel and LiveData
-    implementation("androidx.lifecycle:lifecycle-extensions:2.2.0-rc01")
-    kapt("androidx.lifecycle:lifecycle-compiler:2.2.0-rc01")
+    implementation("androidx.lifecycle:lifecycle-extensions:2.2.0-rc03")
+    kapt("androidx.lifecycle:lifecycle-compiler:2.2.0-rc03")
 
     // KTX
-    implementation("androidx.core:core:1.2.0-beta01")
+    implementation("androidx.core:core:1.2.0-rc01")
     implementation("androidx.core:core-ktx:1.1.0")
-    implementation("androidx.activity:activity-ktx:1.1.0-rc01")
+    implementation("androidx.activity:activity-ktx:1.1.0-rc03")
     implementation("androidx.lifecycle:lifecycle-viewmodel-ktx:2.1.0")
 
-    testImplementation("junit:junit:4.13-beta-3")
+    testImplementation("junit:junit:4.13-rc-2")
     testImplementation("org.mockito:mockito-core:3.0.0")
 
-    implementation(kotlin("stdlib-jdk7", KotlinCompilerVersion.VERSION))
-    implementation(kotlin("test-junit", KotlinCompilerVersion.VERSION))
+    implementation("org.jetbrains.kotlin:kotlin-stdlib-jdk7:1.3.61")
+    implementation("org.jetbrains.kotlin:kotlin-test-junit:1.3.61")
     implementation(project(":contract"))
 }
 

@@ -28,11 +28,10 @@ class SettingsFragment : Fragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         keymapButton.setOnClickListener {
-            fragmentManager?.apply {
+            parentFragmentManager.
                 beginTransaction()
                         .replace(R.id.main_content, KeymapFragment())
                         .commit()
-            }
         }
 
         settings = Settings(context!!)

@@ -30,5 +30,5 @@ android {
 }
 
 dependencies {
-    implementation(kotlin("stdlib-jdk7", KotlinCompilerVersion.VERSION))
+    implementation("org.jetbrains.kotlin:kotlin-stdlib-jdk7:1.3.61")
 }

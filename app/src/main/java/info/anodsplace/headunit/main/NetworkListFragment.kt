@@ -36,7 +36,7 @@ class NetworkListFragment : Fragment() {
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
         val recyclerView = inflater.inflate(R.layout.fragment_list, container, false) as RecyclerView
 
-        mAdapter = AddressAdapter(context!!, fragmentManager!!)
+        mAdapter = AddressAdapter(context!!, parentFragmentManager)
         recyclerView.layoutManager = LinearLayoutManager(context)
         recyclerView.adapter = mAdapter
         return recyclerView
