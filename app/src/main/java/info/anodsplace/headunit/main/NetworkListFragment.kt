@@ -5,13 +5,13 @@ import android.os.Bundle
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import android.text.Html
-import android.text.TextUtils
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.Button
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.FragmentManager
+import info.anodsplace.headunit.App
 
 import java.io.IOException
 import java.net.InetAddress
@@ -21,8 +21,9 @@ import java.util.Locale
 
 import info.anodsplace.headunit.R
 import info.anodsplace.headunit.aap.AapService
-import info.anodsplace.headunit.utils.NetworkUtils
 import info.anodsplace.headunit.utils.Settings
+import info.anodsplace.headunit.utils.changeLastBit
+import info.anodsplace.headunit.utils.toInetAddress
 
 /**
  * @author algavris
@@ -31,14 +32,14 @@ import info.anodsplace.headunit.utils.Settings
  */
 
 class NetworkListFragment : Fragment() {
-    private lateinit var mAdapter: AddressAdapter
+    private lateinit var adapter: AddressAdapter
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
         val recyclerView = inflater.inflate(R.layout.fragment_list, container, false) as RecyclerView
 
-        mAdapter = AddressAdapter(context!!, parentFragmentManager)
+        adapter = AddressAdapter(context!!, parentFragmentManager)
         recyclerView.layoutManager = LinearLayoutManager(context)
-        recyclerView.adapter = mAdapter
+        recyclerView.adapter = adapter
         return recyclerView
     }
 
@@ -46,67 +47,61 @@ class NetworkListFragment : Fragment() {
         super.onResume()
 
         try {
-            val currentIp = NetworkUtils.getWifiIpAddress(activity)
-            val inet = NetworkUtils.intToInetAddress(currentIp)
-            mAdapter.setCurrentAddress(inet)
-        } catch (ignored: IOException) {
-            mAdapter.setNoCurrentAddress()
+            val currentIp = App.provide(requireContext()).wifiManager.connectionInfo.ipAddress
+            adapter.currentAddress = currentIp.toInetAddress().changeLastBit(1).hostAddress ?: ""
+        } catch (ignored: Exception) {
+            adapter.currentAddress = ""
         }
 
-        mAdapter.loadAddresses()
+        adapter.loadAddresses()
     }
 
     fun addAddress(ip: InetAddress) {
-        mAdapter.addNewAddress(ip)
+        adapter.addNewAddress(ip)
     }
 
     private class DeviceViewHolder internal constructor(itemView: View) : RecyclerView.ViewHolder(itemView) {
-        internal val allowButton = itemView.findViewById<Button>(android.R.id.button1)
+        internal val removeButton = itemView.findViewById<Button>(android.R.id.button1)
         internal val startButton = itemView.findViewById<Button>(android.R.id.button2)
     }
 
-    private class AddressAdapter
-        internal constructor(
-                private val mContext: Context,
-                private val mFragmentManager: FragmentManager) : RecyclerView.Adapter<DeviceViewHolder>(), View.OnClickListener {
+    private class AddressAdapter(
+                private val context: Context,
+                private val fragmentManager: FragmentManager
+    ) : RecyclerView.Adapter<DeviceViewHolder>(), View.OnClickListener {
 
-        private val mAddressList = ArrayList<String>()
-        private var mCurrentAddress: InetAddress? = null
-        private val mSettings: Settings = Settings(mContext)
+        private val addressList = ArrayList<String>()
+        var currentAddress: String = ""
+        private val settings: Settings = Settings(context)
 
         override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): DeviceViewHolder {
-            val view = LayoutInflater.from(mContext).inflate(R.layout.list_item_device, parent, false)
+            val view = LayoutInflater.from(context).inflate(R.layout.list_item_device, parent, false)
             val holder = DeviceViewHolder(view)
 
             holder.startButton.setOnClickListener(this)
-            holder.allowButton.setOnClickListener(this)
+            holder.removeButton.setOnClickListener(this)
+            holder.removeButton.setText(R.string.remove)
             return holder
         }
 
         override fun onBindViewHolder(holder: DeviceViewHolder, position: Int) {
-            val device = mAddressList[position]
+            val ipAddress = addressList[position]
 
             val line1: String
-            val line2: String
             if (position == 0) {
                 line1 = "Add a new address"
-                line2 = "Current ip: " + if (TextUtils.isEmpty(device)) "No ip address" else device
-                holder.allowButton.visibility = View.GONE
+                holder.removeButton.visibility = View.GONE
             } else {
-                line1 = device
-                line2 = ""
-                holder.allowButton.visibility = View.VISIBLE
-                holder.allowButton.setText(R.string.remove)
+                line1 = ipAddress
+                holder.removeButton.visibility = if (position == 1 && currentAddress.isNotEmpty()) View.GONE else View.VISIBLE
             }
-            val msg = String.format(Locale.US, "<b>%1\$s</b><br/>%2\$s", line1, line2)
             holder.startButton.setTag(R.integer.key_position, position)
-            holder.startButton.text = Html.fromHtml(msg)
-            holder.startButton.setTag(R.integer.key_data, device)
-            holder.allowButton.setText(R.string.remove)
+            holder.startButton.text = line1
+            holder.startButton.setTag(R.integer.key_data, ipAddress)
         }
 
         override fun getItemCount(): Int {
-           return mAddressList.size
+           return addressList.size
         }
 
         override fun onClick(v: View) {
@@ -114,60 +109,46 @@ class NetworkListFragment : Fragment() {
                 if (v.getTag(R.integer.key_position) == 0) {
                     var ip: InetAddress? = null
                     try {
-                        val ipInt = NetworkUtils.getWifiIpAddress(mContext)
-                        ip = NetworkUtils.intToInetAddress(ipInt)
+                        val ipInt = App.provide(context).wifiManager.connectionInfo.ipAddress
+                        ip = ipInt.toInetAddress()
                     } catch (ignored: IOException) {
                     }
 
-                    val dialog = AddNetworkAddressDialog.create(ip)
-                    dialog.show(mFragmentManager, "AddNetworkAddressDialog")
+                    AddNetworkAddressDialog.show(ip, fragmentManager)
                 } else {
-                    mContext.startService(AapService.createIntent(v.getTag(R.integer.key_data) as String, mContext))
+                    context.startService(AapService.createIntent(v.getTag(R.integer.key_data) as String, context))
                 }
             } else {
                 this.removeAddress(v.getTag(R.integer.key_data) as String)
             }
         }
 
-        private fun addCurrentAddress() {
-            if (mCurrentAddress != null) {
-                mAddressList.add(mCurrentAddress!!.getHostAddress())
-            } else {
-                mAddressList.add("")
-            }
-        }
-
-        internal fun setCurrentAddress(currentAddress: InetAddress) {
-            mCurrentAddress = currentAddress
-        }
-
-        internal fun setNoCurrentAddress() {
-            mCurrentAddress = null
-        }
-
         internal fun addNewAddress(ip: InetAddress) {
-            val addrs = mSettings.networkAddresses as HashSet<String>
+            val addrs = settings.networkAddresses as HashSet<String>
             addrs.add(ip.hostAddress)
-            mSettings.networkAddresses = addrs
+            settings.networkAddresses = addrs
             set(addrs)
         }
 
         internal fun loadAddresses() {
-            val addrs = mSettings.networkAddresses
-            set(addrs)
+            set(settings.networkAddresses)
         }
 
         private fun set(addrs: Collection<String>) {
-            mAddressList.clear()
-            addCurrentAddress()
-            mAddressList.addAll(addrs)
+            addressList.clear()
+            addressList.add("")
+            addressList.add("127.0.0.1")
+            if (currentAddress.isNotEmpty()) {
+                addressList.add(currentAddress)
+            }
+            addressList.addAll(addrs)
             notifyDataSetChanged()
         }
 
         private fun removeAddress(ipAddress: String) {
-            val addrs = mSettings.networkAddresses as HashSet<String>
+            val addrs = settings.networkAddresses as HashSet<String>
             addrs.remove(ipAddress)
-            mSettings.networkAddresses = addrs
+            settings.networkAddresses = addrs
             set(addrs)
         }
 

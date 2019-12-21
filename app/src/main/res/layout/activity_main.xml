@@ -36,6 +36,13 @@
             android:background="?android:attr/actionBarItemBackground"
             android:contentDescription="@string/usb" />
 
+        <ImageButton
+            android:id="@+id/wifi"
+            android:layout_width="128dp"
+            android:layout_height="64dp"
+            android:src="@drawable/ic_network_wifi_white_24dp"
+            android:background="?android:attr/actionBarItemBackground"
+            android:contentDescription="@string/usb" />
     </LinearLayout>
 
     <FrameLayout

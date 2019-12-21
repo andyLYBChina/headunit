@@ -22,6 +22,7 @@ import info.anodsplace.headunit.location.GpsLocationService
 import info.anodsplace.headunit.utils.*
 import info.anodsplace.headunit.contract.DisconnectIntent
 import info.anodsplace.headunit.contract.LocationUpdateIntent
+import kotlinx.coroutines.*
 
 /**
  * @author algavris
@@ -29,12 +30,17 @@ import info.anodsplace.headunit.contract.LocationUpdateIntent
  * @date 03/06/2016.
  */
 
-class AapService : Service(), UsbReceiver.Listener, AccessoryConnection.Listener {
+class AapService : Service(), UsbReceiver.Listener {
+    private val serviceJob = Job()
+    private val serviceScope = CoroutineScope(Dispatchers.Main + serviceJob)
 
     private lateinit var uiModeManager: UiModeManager
     private var accessoryConnection: AccessoryConnection? = null
     private lateinit var usbReceiver: UsbReceiver
     private lateinit var nightModeReceiver: BroadcastReceiver
+
+    private val transport: AapTransport
+        get() = App.provide(this).transport
 
     override fun onBind(intent: Intent): IBinder? {
         return null
@@ -58,6 +64,7 @@ class AapService : Service(), UsbReceiver.Listener, AccessoryConnection.Listener
 
     override fun onDestroy() {
         super.onDestroy()
+        serviceJob.cancel()
         onDisconnect()
         unregisterReceiver(nightModeReceiver)
         unregisterReceiver(usbReceiver)
@@ -91,20 +98,23 @@ class AapService : Service(), UsbReceiver.Listener, AccessoryConnection.Listener
 
         startForeground(1, noty)
 
-        accessoryConnection!!.connect(this)
+        serviceScope.launch {
+            val result = accessoryConnection!!.connect()
+            onConnectionResult(result)
+        }
 
         return START_STICKY
     }
 
-    override fun onConnectionResult(success: Boolean) {
+    private suspend fun onConnectionResult(success: Boolean) = withContext(Dispatchers.Main) {
         if (success) {
             reset()
-            if (App.provide(this).transport.start(accessoryConnection!!)) {
+            if (transport.start(accessoryConnection!!)) {
                 sendBroadcast(ConnectedIntent())
             }
         } else {
             AppLog.e("Cannot connect to device")
-            Toast.makeText(this, "Cannot connect to the device", Toast.LENGTH_SHORT).show()
+            Toast.makeText(applicationContext, "Cannot connect to the device", Toast.LENGTH_SHORT).show()
             stopSelf()
         }
     }
@@ -190,7 +200,7 @@ class AapService : Service(), UsbReceiver.Listener, AccessoryConnection.Listener
             if (connectionType == TYPE_USB) {
                 val device = DeviceIntent(intent).device
                 if (device == null) {
-                    AppLog.e("No device in " + intent)
+                    AppLog.e("No device in $intent")
                     return null
                 }
                 val usbManager = context.getSystemService(Context.USB_SERVICE) as UsbManager

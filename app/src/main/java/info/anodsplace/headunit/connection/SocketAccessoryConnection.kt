@@ -1,80 +1,78 @@
 package info.anodsplace.headunit.connection
 
 
-import java.io.BufferedInputStream
+import info.anodsplace.headunit.utils.AppLog
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import java.io.DataInputStream
 import java.io.IOException
+import java.io.OutputStream
 import java.net.InetSocketAddress
 import java.net.Socket
-
-import info.anodsplace.headunit.utils.AppLog
 
 /**
  * @author algavris
  * *
  * @date 05/11/2016.
  */
-class SocketAccessoryConnection(internal val mIp: String) : AccessoryConnection {
-    internal val mSocket: Socket = Socket()
-    private var mInputStream: BufferedInputStream? = null
+class SocketAccessoryConnection(private val ip: String) : AccessoryConnection {
+    private var output: OutputStream? = null
+    private var input: DataInputStream? = null
+    private var transport = Socket()
 
     override val isSingleMessage: Boolean
         get() = true
 
-    override fun send(buf: ByteArray, length: Int, timeout: Int): Int {
-        try {
-            //            mSocket.setSendBufferSize(length);
-            mSocket.getOutputStream().write(buf, 0, length)
-            mSocket.getOutputStream().flush()
-            return length
+    override fun sendBlocking(buf: ByteArray, length: Int, timeout: Int): Int {
+        return try {
+            output!!.write(buf, 0, length)
+            length
         } catch (e: IOException) {
             AppLog.e(e)
-            return -1
+            -1
         }
-
     }
 
-    override fun recv(buf: ByteArray, length: Int, timeout: Int): Int {
+    override suspend fun recv(buf: ByteArray, length: Int, timeout: Int): Int = withContext(Dispatchers.IO) {
+        return@withContext recvBlocking(buf, length, timeout)
+    }
 
-        try {
-            mSocket.soTimeout = timeout
-            return mInputStream!!.read(buf, 0, length)
+    override fun recvBlocking(buf: ByteArray, length: Int, timeout: Int): Int {
+        return try {
+            transport.soTimeout = timeout
+            input!!.read(buf,0, length)
         } catch (e: IOException) {
-            return -1
+            -1
         }
-
     }
 
     override val isConnected: Boolean
-        get() = mSocket.isConnected
+        get() = transport.isConnected
 
-    override fun connect(listener: AccessoryConnection.Listener) {
-
-        Thread(Runnable {
-            try {
-                mSocket.tcpNoDelay = true
-                mSocket.reuseAddress = true
-                //                    mSocket.setReceiveBufferSize(DEF_BUFFER_LENGTH);
-                mSocket.connect(InetSocketAddress(mIp, 5277), 3000)
-                mInputStream = BufferedInputStream(mSocket.getInputStream(), DEF_BUFFER_LENGTH)
-                listener.onConnectionResult(mSocket.isConnected)
-            } catch (e: IOException) {
-                AppLog.e(e)
-                listener.onConnectionResult(false)
-            }
-        }, "socket_connect").start()
+    override suspend fun connect(): Boolean = withContext(Dispatchers.IO) {
+        try {
+            transport.soTimeout = 0
+            transport.connect(InetSocketAddress(ip, 5277), 2000)
+            input = DataInputStream(transport.getInputStream())
+            output = transport.getOutputStream()
+            return@withContext true
+        } catch (e: IOException) {
+            AppLog.e(e)
+            return@withContext false
+        }
     }
 
     override fun disconnect() {
-        if (mSocket.isConnected) {
+        if (transport.isConnected) {
             try {
-                mSocket.close()
+                transport.close()
             } catch (e: IOException) {
                 AppLog.e(e)
-                //catch logic
             }
 
         }
-        mInputStream = null
+        input = null
+        output = null
     }
 
     companion object {

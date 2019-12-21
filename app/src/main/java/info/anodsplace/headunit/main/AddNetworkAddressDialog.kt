@@ -5,6 +5,7 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.widget.EditText
 import androidx.fragment.app.DialogFragment
+import androidx.fragment.app.FragmentManager
 import info.anodsplace.headunit.R
 import info.anodsplace.headunit.utils.AppLog
 import java.net.InetAddress
@@ -17,7 +18,7 @@ import java.net.InetAddress
 
 class AddNetworkAddressDialog : DialogFragment() {
 
-    override fun onCreateDialog(savedInstanceState: android.os.Bundle?): android.app.Dialog {
+    override fun onCreateDialog(savedInstanceState: Bundle?): android.app.Dialog {
         val builder = AlertDialog.Builder(activity)
         val content = LayoutInflater.from(activity)
                 .inflate(R.layout.fragment_add_network_address, null, false)
@@ -59,6 +60,10 @@ class AddNetworkAddressDialog : DialogFragment() {
     }
 
     companion object {
+
+        fun show(ip: InetAddress?, manager: FragmentManager) {
+            create(ip).show(manager, "AddNetworkAddressDialog")
+        }
 
         fun create(ip: InetAddress?) = AddNetworkAddressDialog().apply {
             arguments = Bundle()

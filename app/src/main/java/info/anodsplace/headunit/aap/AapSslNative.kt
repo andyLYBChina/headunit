@@ -41,7 +41,6 @@ internal class AapSslNative : AapSsl {
     override fun handshakeRead(): ByteArray? {
         native_ssl_do_handshake()
         val size = native_ssl_bio_read(0, Messages.DEF_BUFFER_LENGTH, bio_read)
-        AppLog.i("SSL BIO read: %d", size)
         if (size <= 0) {
             AppLog.i("SSL BIO read error")
             return null

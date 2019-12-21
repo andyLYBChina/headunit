@@ -95,7 +95,7 @@ class AapTransport(
         ba.data[1] = data[1]
         Utils.intToBytes(ba.limit - AapMessage.HEADER_SIZE, 2, ba.data)
 
-        val size = connection!!.send(ba.data, ba.limit, 250)
+        val size = connection!!.sendBlocking(ba.data, ba.limit, 250)
 
         if (AppLog.LOG_VERBOSE) {
             AppLog.v("Sent size: %d", size)
@@ -139,13 +139,13 @@ class AapTransport(
         // Version request
 
         val version = Messages.versionRequest
-        var ret = connection.send(version, version.size, 1000)
+        var ret = connection.sendBlocking(version, version.size, 1000)
         if (ret < 0) {
             AppLog.e("Version request sendEncrypted ret: $ret")
             return false
         }
 
-        ret = connection.recv(buffer, buffer.size, 1000)
+        ret = connection.recvBlocking(buffer, buffer.size, 1000)
         if (ret <= 0) {
             AppLog.e("Version request recv ret: $ret")
             return false
@@ -167,10 +167,10 @@ class AapTransport(
             AppLog.i("SSL BIO read: %d", handshakeData.size)
 
             val bio = Messages.createRawMessage(Channel.ID_CTR, 3, 3, handshakeData)
-            var size = connection.send(bio, bio.size, 1000)
+            var size = connection.sendBlocking(bio, bio.size, 1000)
             AppLog.i("SSL BIO sent: %d", size)
 
-            size = connection.recv(buffer, buffer.size, 1000)
+            size = connection.recvBlocking(buffer, buffer.size, 1000)
             AppLog.i("SSL received: %d", size)
             if (size <= 0) {
                 AppLog.i("SSL receive error")
@@ -183,7 +183,7 @@ class AapTransport(
 
         // Status = OK
         val status = Messages.statusOk
-        ret = connection.send(status, status.size, 1000)
+        ret = connection.sendBlocking(status, status.size, 1000)
         if (ret < 0) {
             AppLog.e("Status request sendEncrypted ret: $ret")
             return false

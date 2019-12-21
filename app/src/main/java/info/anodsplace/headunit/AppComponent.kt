@@ -4,6 +4,7 @@ import android.app.Application
 import android.app.NotificationManager
 import android.content.Context
 import android.media.AudioManager
+import android.net.wifi.WifiManager
 import androidx.localbroadcastmanager.content.LocalBroadcastManager
 import info.anodsplace.headunit.aap.AapTransport
 import info.anodsplace.headunit.decoder.AudioDecoder
@@ -41,6 +42,8 @@ class AppComponent(private val app: App) {
         get() = app.getSystemService(Application.AUDIO_SERVICE) as AudioManager
     val notificationManager: NotificationManager
         get() = app.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+    val wifiManager: WifiManager
+        get() = app.getSystemService(Context.WIFI_SERVICE) as WifiManager
 
     val localBroadcastManager = LocalBroadcastManager.getInstance(app)
 }

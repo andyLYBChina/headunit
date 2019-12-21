@@ -7,14 +7,13 @@ import android.view.KeyEvent
 import android.widget.TextView
 import androidx.activity.viewModels
 import androidx.core.app.ActivityCompat
-import androidx.core.content.PermissionChecker
 import androidx.fragment.app.FragmentActivity
 import info.anodsplace.headunit.App
 import info.anodsplace.headunit.R
 import info.anodsplace.headunit.aap.AapProjectionActivity
 import info.anodsplace.headunit.utils.AppLog
-import info.anodsplace.headunit.utils.NetworkUtils
 import info.anodsplace.headunit.utils.SystemUI
+import info.anodsplace.headunit.utils.toInetAddress
 import kotlinx.android.synthetic.main.activity_main.*
 import java.io.IOException
 
@@ -52,19 +51,33 @@ class MainActivity : FragmentActivity() {
                     .commit()
         }
 
+        wifi.setOnClickListener {
+            supportFragmentManager
+                    .beginTransaction()
+                    .replace(R.id.main_content, NetworkListFragment())
+                    .commit()
+        }
+
         viewModel.register()
 
         try {
-            val currentIp = NetworkUtils.getWifiIpAddress(this)
-            val inet = NetworkUtils.intToInetAddress(currentIp)
+            val currentIp = App.provide(this).wifiManager.connectionInfo.ipAddress
+            val inet = currentIp.toInetAddress()
             val ipView = findViewById<TextView>(R.id.ip_address)
-            ipView.text = inet?.hostAddress ?: ""
+            ipView.text = inet.hostAddress ?: ""
         } catch (ignored: IOException) { }
 
         ActivityCompat.requestPermissions(this, arrayOf(
                 Manifest.permission.RECORD_AUDIO,
                 Manifest.permission.ACCESS_FINE_LOCATION
         ), permissionRequestCode)
+
+        if (savedInstanceState == null) {
+            supportFragmentManager
+                    .beginTransaction()
+                    .replace(R.id.main_content, NetworkListFragment())
+                    .commit()
+        }
     }
 
     override fun onWindowFocusChanged(hasFocus: Boolean) {

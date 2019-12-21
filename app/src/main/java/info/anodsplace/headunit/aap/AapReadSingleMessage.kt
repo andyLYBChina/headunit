@@ -17,7 +17,7 @@ internal class AapReadSingleMessage(connection: AccessoryConnection, ssl: AapSsl
     private val msgBuffer = ByteArray(65535) // unsigned short max
 
     override fun doRead(connection: AccessoryConnection): Int {
-        val headerSize = connection.recv(recvHeader.buf, recvHeader.buf.size, 150)
+        val headerSize = connection.recvBlocking(recvHeader.buf, recvHeader.buf.size, 150)
         if (headerSize != AapMessageIncoming.EncryptedHeader.SIZE) {
             AppLog.v("Header: recv %d", headerSize)
             return -1
@@ -27,14 +27,14 @@ internal class AapReadSingleMessage(connection: AccessoryConnection, ssl: AapSsl
 
         if (recvHeader.flags == 0x09) {
             val sizeBuf = ByteArray(4)
-            connection.recv(sizeBuf, sizeBuf.size, 150)
+            connection.recvBlocking(sizeBuf, sizeBuf.size, 150)
             // If First fragment Video...
             // (Packet is encrypted so we can't get the real msg_type or check for 0, 0, 0, 1)
             val totalSize = Utils.bytesToInt(sizeBuf, 0, false)
             AppLog.v("First fragment total_size: %d", totalSize)
         }
 
-        val msgSize = connection.recv(msgBuffer, recvHeader.enc_len, 150)
+        val msgSize = connection.recvBlocking(msgBuffer, recvHeader.enc_len, 150)
         if (msgSize != recvHeader.enc_len) {
             AppLog.v("Message: recv %d", msgSize)
             return -1

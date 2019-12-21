@@ -25,11 +25,11 @@ object AppLog {
     }
 
     var LOGGER: Logger = Logger.Android()
-    private const val LOG_LEVEL = Log.DEBUG
+    private const val LOG_LEVEL = Log.VERBOSE
 
-    val TAG = "CAR.HU.J"
-    val LOG_VERBOSE = LOG_LEVEL <= Log.VERBOSE
-    val LOG_DEBUG = LOG_LEVEL <= Log.DEBUG
+    const val TAG = "CAR.HU.J"
+    const val LOG_VERBOSE = LOG_LEVEL <= Log.VERBOSE
+    const val LOG_DEBUG = LOG_LEVEL <= Log.DEBUG
 
     fun i(msg: String) {
         log(Log.INFO, format(msg))
@@ -92,7 +92,7 @@ object AppLog {
         }
         val stackTrace = Throwable().fillInStackTrace().stackTrace
         var string = "<unknown>"
-        for (i in 2..stackTrace.size - 1) {
+        for (i in 2 until stackTrace.size) {
             val className = stackTrace[i].className
             if (className != AppLog::class.java.name) {
                 val substring = className.substring(1 + className.indexOfLast { a -> a == 46.toChar() })
