@@ -17,6 +17,7 @@ import info.anodsplace.headunit.decoder.AudioDecoder
 import info.anodsplace.headunit.decoder.MicRecorder
 import info.anodsplace.headunit.decoder.VideoDecoder
 import info.anodsplace.headunit.main.BackgroundNotification
+import info.anodsplace.headunit.ssl.SingleKeyKeyManager
 import info.anodsplace.headunit.utils.*
 import java.util.*
 
@@ -29,6 +30,8 @@ class AapTransport(
         private val context: Context)
     : MicRecorder.Listener {
 
+    val ssl: AapSsl = AapSslNative() //AapSslContext(SingleKeyKeyManager(context))
+
     private val aapAudio: AapAudio
     private val aapVideo: AapVideo
     private val sendThread: HandlerThread = HandlerThread("AapTransport:Handler::Send", Process.THREAD_PRIORITY_AUDIO)
@@ -36,7 +39,6 @@ class AapTransport(
     private val micRecorder: MicRecorder = MicRecorder(settings.micSampleRate, context)
     private val sessionIds = SparseIntArray(4)
     private val startedSensors = HashSet<Int>(4)
-    private val ssl = AapSslNative()
     private val keyCodes = settings.keyCodes.entries.associateTo(mutableMapOf()) {
         it.value to it.key
     }
@@ -112,21 +114,19 @@ class AapTransport(
 
     internal fun start(connection: AccessoryConnection): Boolean {
         AppLog.i("Start Aap transport for $connection")
+        this.connection = connection
+        sendThread.start()
+        sendHandler = Handler(sendThread.looper, sendHandlerCallback)
+        pollThread.start()
+        pollHandler = Handler(pollThread.looper, pollHandlerCallback)
 
         if (!handshake(connection)) {
+            quit()
             AppLog.e("Handshake failed")
             return false
         }
 
-        this.connection = connection
-
         aapRead = AapRead.Factory.create(connection, this, micRecorder, aapAudio, aapVideo, settings, notification, context)
-
-        pollThread.start()
-        sendThread.start()
-        pollHandler = Handler(pollThread.looper, pollHandlerCallback)
-        sendHandler = Handler(pollThread.looper, sendHandlerCallback)
-
         pollHandler!!.sendEmptyMessage(MSG_POLL)
 
         // Create and start Transport Thread
@@ -138,7 +138,7 @@ class AapTransport(
 
         // Version request
 
-        val version = Messages.createRawMessage(0, 3, 1, Messages.VERSION_REQUEST, Messages.VERSION_REQUEST.size) // Version Request
+        val version = Messages.versionRequest
         var ret = connection.send(version, version.size, 1000)
         if (ret < 0) {
             AppLog.e("Version request sendEncrypted ret: $ret")
@@ -163,10 +163,10 @@ class AapTransport(
         // SSL_is_init_finished (hu_ssl_ssl)
 
         while (hs_ctr++ < 2) {
-            ssl.handshake()
-            val ba = ssl.bioRead() ?: return false
+            val handshakeData = ssl.handshakeRead() ?: return false
+            AppLog.i("SSL BIO read: %d", handshakeData.size)
 
-            val bio = Messages.createRawMessage(Channel.ID_CTR, 3, 3, ba.data, ba.limit)
+            val bio = Messages.createRawMessage(Channel.ID_CTR, 3, 3, handshakeData)
             var size = connection.send(bio, bio.size, 1000)
             AppLog.i("SSL BIO sent: %d", size)
 
@@ -177,13 +177,12 @@ class AapTransport(
                 return false
             }
 
-            ret = ssl.bioWrite(6, size - 6, buffer)
+            ret = ssl.handshakeWrite(6, size - 6, buffer)
             AppLog.i("SSL BIO write: %d", ret)
         }
 
         // Status = OK
-        // byte ac_buf [] = {0, 3, 0, 4, 0, 4, 8, 0};
-        val status = Messages.createRawMessage(0, 3, 4, byteArrayOf(8, 0), 2)
+        val status = Messages.statusOk
         ret = connection.send(status, status.size, 1000)
         if (ret < 0) {
             AppLog.e("Status request sendEncrypted ret: $ret")
@@ -201,7 +200,8 @@ class AapTransport(
 
         if (mapped == KeyEvent.KEYCODE_GUIDE) {
             // Hack for navigation button to simulate touch
-            val action = if (isPress) Input.TouchEvent.PointerAction.TOUCH_ACTION_DOWN else Input.TouchEvent.PointerAction.TOUCH_ACTION_UP
+            val action = if (isPress)
+                Input.TouchEvent.PointerAction.TOUCH_ACTION_DOWN else Input.TouchEvent.PointerAction.TOUCH_ACTION_UP
             this.send(TouchEvent(SystemClock.elapsedRealtime(), action, 99, 444))
             return
         }

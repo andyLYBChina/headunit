@@ -10,14 +10,17 @@ import info.anodsplace.headunit.aap.protocol.proto.Input
  * @author algavris
  * @date 13/02/2017.
  */
-class TouchEvent(timeStamp: Long, action: Input.TouchEvent.PointerAction, x: Int, y: Int)
-    : AapMessage(Channel.ID_INP, Input.MsgType.EVENT_VALUE, makeProto(timeStamp, action, x, y)) {
+class TouchEvent(timeStamp: Long, action: Input.TouchEvent.PointerAction, actionIndex: Int, pointerData: Iterable<Triple<Int, Int, Int>>)
+    : AapMessage(Channel.ID_INP, Input.MsgType.EVENT_VALUE, makeProto(timeStamp, action, actionIndex, pointerData)) {
 
-    constructor(timeStamp: Long, action: Int, x: Int, y: Int)
-        : this(timeStamp, Input.TouchEvent.PointerAction.forNumber(action), x, y)
+    constructor(timeStamp: Long, action: Int, actionIndex: Int, pointerData: Iterable<Triple<Int, Int, Int>>)
+        : this(timeStamp, Input.TouchEvent.PointerAction.forNumber(action), actionIndex, pointerData)
+
+    constructor(timeStamp: Long, action: Input.TouchEvent.PointerAction, x: Int, y: Int)
+        : this(timeStamp, action, 0, listOf(Triple(0, x, y)))
 
     companion object {
-        fun motionEventToAction(event: MotionEvent): Int {
+        fun motionEventToAction(event: MotionEvent): Int? {
             return when (event.actionMasked) {
                 MotionEvent.ACTION_POINTER_DOWN -> Input.TouchEvent.PointerAction.TOUCH_ACTION_DOWN_VALUE
                 MotionEvent.ACTION_DOWN -> MotionEvent.ACTION_DOWN
@@ -25,21 +28,22 @@ class TouchEvent(timeStamp: Long, action: Input.TouchEvent.PointerAction, x: Int
                 MotionEvent.ACTION_CANCEL -> MotionEvent.ACTION_UP
                 MotionEvent.ACTION_POINTER_UP -> MotionEvent.ACTION_POINTER_UP
                 MotionEvent.ACTION_UP -> MotionEvent.ACTION_UP
-                else -> {
-                    -1
-                }
+                else -> null
             }
         }
 
-        private fun makeProto(timeStamp: Long, action: Input.TouchEvent.PointerAction, x: Int, y: Int): Message {
+        private fun makeProto(timeStamp: Long, action: Input.TouchEvent.PointerAction, actionIndex: Int, pointerData: Iterable<Triple<Int, Int, Int>>): Message {
             val touchEvent = Input.TouchEvent.newBuilder()
                     .also {
-                        it.addPointerData(
-                                Input.TouchEvent.Pointer.newBuilder().also { pointer ->
-                                    pointer.x = x
-                                    pointer.y = y
-                                    pointer.pointerId = 0
-                                })
+                        pointerData.forEach { data ->
+                            it.addPointerData(
+                                    Input.TouchEvent.Pointer.newBuilder().also { pointer ->
+                                        pointer.pointerId = data.first
+                                        pointer.x = data.second
+                                        pointer.y = data.third
+                                    })
+                        }
+                        it.actionIndex = actionIndex
                         it.action = action
                     }
 

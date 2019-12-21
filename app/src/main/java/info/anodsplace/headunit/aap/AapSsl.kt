@@ -5,11 +5,10 @@ package info.anodsplace.headunit.aap
  * *
  * @date 14/02/2017.
  */
-internal interface AapSsl {
+interface AapSsl {
     fun prepare(): Int
-    fun handshake()
-    fun bioRead(): ByteArrayWithLimit?
-    fun bioWrite(start: Int, length: Int, buffer: ByteArray): Int
+    fun handshakeRead(): ByteArray?
+    fun handshakeWrite(start: Int, length: Int, buffer: ByteArray): Int
     fun decrypt(start: Int, length: Int, buffer: ByteArray): ByteArrayWithLimit?
     fun encrypt(offset: Int, length: Int, buffer: ByteArray): ByteArrayWithLimit?
 }

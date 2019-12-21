@@ -78,22 +78,21 @@ class AapProjectionActivity : SurfaceActivity(), SurfaceHolder.Callback {
     }
 
     private fun sendTouchEvent(event: MotionEvent) {
-
-        val x = event.getX(0) / (surface.width / screen.width.toFloat())
-        val y = event.getY(0) / (surface.height / screen.height.toFloat())
-
-        if (x < 0 || y < 0 || x >= 65535 || y >= 65535) {
-            AppLog.e("Invalid x: $x  y: $y")
-            return
-        }
-
-        val action = TouchEvent.motionEventToAction(event)
-        if (action == -1) {
-            AppLog.e("event: $event (Unknown: ${event.actionMasked})  x: $x  y: $y")
-            return
-        }
+        val action = TouchEvent.motionEventToAction(event) ?: return
         val ts = SystemClock.elapsedRealtime()
-        transport.send(TouchEvent(ts, action, x.toInt(), y.toInt()))
+
+        val scaleX = (surface.width / screen.width.toFloat())
+        val scaleY = (surface.height / screen.height.toFloat())
+        val pointerData = mutableListOf<Triple<Int, Int, Int>>()
+        repeat(event.pointerCount) { pointerIndex ->
+            val pointerId = event.getPointerId(pointerIndex)
+            val x = event.getX(pointerIndex) / scaleX
+            val y = event.getY(pointerIndex) / scaleY
+            if (x < 0 || x >= 65535 || y < 0 || y >= 65535) return
+            pointerData.add(Triple(pointerId, x.toInt(), y.toInt()))
+        }
+
+        transport.send(TouchEvent(ts, action, event.actionIndex, pointerData))
     }
 
     override fun onKeyDown(keyCode: Int, event: KeyEvent): Boolean {

@@ -20,19 +20,19 @@ internal class AapReadMultipleMessages(
     : AapRead.Base(connection, ssl, handler) {
 
     private val fifo = ByteBuffer.allocate(Messages.DEF_BUFFER_LENGTH * 2)
-    private val recv_buffer = ByteArray(Messages.DEF_BUFFER_LENGTH)
-    private val recv_header = AapMessageIncoming.EncryptedHeader()
-    private val msg_buffer = ByteArray(65535) // unsigned short max
+    private val recvBuffer = ByteArray(Messages.DEF_BUFFER_LENGTH)
+    private val recvHeader = AapMessageIncoming.EncryptedHeader()
+    private val msgBuffer = ByteArray(65535) // unsigned short max
 
     override fun doRead(connection: AccessoryConnection): Int {
 
-        val size = connection.recv(recv_buffer, recv_buffer.size, 150)
+        val size = connection.recv(recvBuffer, recvBuffer.size, 150)
         if (size <= 0) {
             //            AppLog.v("recv %d", size);
             return 0
         }
         try {
-            processBulk(size, recv_buffer)
+            processBulk(size, recvBuffer)
         } catch (e: AapMessageHandler.HandleException) {
             return -1
         }
@@ -51,7 +51,7 @@ internal class AapReadMultipleMessages(
             fifo.mark()
             // Parse the header
             try {
-                fifo.get(recv_header.buf, 0, recv_header.buf.size)
+                fifo.get(recvHeader.buf, 0, recvHeader.buf.size)
             } catch (e: BufferUnderflowException) {
                 // we'll come back later for more data
                 AppLog.e("BufferUnderflowException whilst trying to read 4 bytes capacity = %d, position = %d", fifo.capacity(), fifo.position())
@@ -59,33 +59,33 @@ internal class AapReadMultipleMessages(
                 break
             }
 
-            recv_header.decode()
+            recvHeader.decode()
 
-            if (recv_header.flags == 0x09) {
-                val size_buf = ByteArray(4)
-                fifo.get(size_buf, 0, 4)
+            if (recvHeader.flags == 0x09) {
+                val sizeBuf = ByteArray(4)
+                fifo.get(sizeBuf, 0, 4)
                 // If First fragment Video...
                 // (Packet is encrypted so we can't get the real msg_type or check for 0, 0, 0, 1)
-                val total_size = Utils.bytesToInt(size_buf, 0, false)
-                AppLog.v("First fragment total_size: %d", total_size)
+                val totalSize = Utils.bytesToInt(sizeBuf, 0, false)
+                AppLog.v("First fragment total_size: %d", totalSize)
             }
 
             // Retrieve the entire message now we know the length
             try {
-                fifo.get(msg_buffer, 0, recv_header.enc_len)
+                fifo.get(msgBuffer, 0, recvHeader.enc_len)
             } catch (e: BufferUnderflowException) {
                 // rewind so we process the header again next time
-                AppLog.e("BufferUnderflowException whilst trying to read %d bytes limit = %d, position = %d", recv_header.enc_len, fifo.limit(), fifo.position())
+                AppLog.e("BufferUnderflowException whilst trying to read %d bytes limit = %d, position = %d", recvHeader.enc_len, fifo.limit(), fifo.position())
                 fifo.reset()
                 break
             }
 
-            val msg = AapMessageIncoming.decrypt(recv_header, 0, msg_buffer, ssl)
+            val msg = AapMessageIncoming.decrypt(recvHeader, 0, msgBuffer, ssl)
 
             // Decrypt & Process 1 received encrypted message
             if (msg == null) {
                 // If error...
-                AppLog.e("enc_len: %d chan: %d %s flags: %01x msg_type: %d", recv_header.enc_len, recv_header.chan, Channel.name(recv_header.chan), recv_header.flags, recv_header.msg_type)
+                AppLog.e("enc_len: %d chan: %d %s flags: %01x msg_type: %d", recvHeader.enc_len, recvHeader.chan, Channel.name(recvHeader.chan), recvHeader.flags, recvHeader.msg_type)
                 break
             }
 

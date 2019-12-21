@@ -6,4 +6,4 @@ package info.anodsplace.headunit.aap
  * @date 24/09/2016.
  */
 
-internal class ByteArrayWithLimit(val data: ByteArray, var limit: Int)
+class ByteArrayWithLimit(val data: ByteArray, var limit: Int)

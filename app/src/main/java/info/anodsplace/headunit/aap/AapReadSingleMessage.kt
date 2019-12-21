@@ -13,31 +13,40 @@ import info.anodsplace.headunit.utils.AppLog
 internal class AapReadSingleMessage(connection: AccessoryConnection, ssl: AapSsl, handler: AapMessageHandler)
     : AapRead.Base(connection, ssl, handler) {
 
-    private val recv_header = AapMessageIncoming.EncryptedHeader()
-    private val msg_buffer = ByteArray(65535) // unsigned short max
+    private val recvHeader = AapMessageIncoming.EncryptedHeader()
+    private val msgBuffer = ByteArray(65535) // unsigned short max
 
     override fun doRead(connection: AccessoryConnection): Int {
-        val header_size = connection.recv(recv_header.buf, recv_header.buf.size, 150)
-        if (header_size != AapMessageIncoming.EncryptedHeader.SIZE) {
-            AppLog.v("Header: recv %d", header_size)
+        val headerSize = connection.recv(recvHeader.buf, recvHeader.buf.size, 150)
+        if (headerSize != AapMessageIncoming.EncryptedHeader.SIZE) {
+            AppLog.v("Header: recv %d", headerSize)
             return -1
         }
 
-        recv_header.decode()
+        recvHeader.decode()
 
-        val msg_size = connection.recv(msg_buffer, recv_header.enc_len, 150)
-        if (msg_size != recv_header.enc_len) {
-            AppLog.v("Message: recv %d", msg_size)
+        if (recvHeader.flags == 0x09) {
+            val sizeBuf = ByteArray(4)
+            connection.recv(sizeBuf, sizeBuf.size, 150)
+            // If First fragment Video...
+            // (Packet is encrypted so we can't get the real msg_type or check for 0, 0, 0, 1)
+            val totalSize = Utils.bytesToInt(sizeBuf, 0, false)
+            AppLog.v("First fragment total_size: %d", totalSize)
+        }
+
+        val msgSize = connection.recv(msgBuffer, recvHeader.enc_len, 150)
+        if (msgSize != recvHeader.enc_len) {
+            AppLog.v("Message: recv %d", msgSize)
             return -1
         }
 
         try {
-            val msg = AapMessageIncoming.decrypt(recv_header, 0, msg_buffer, ssl)
+            val msg = AapMessageIncoming.decrypt(recvHeader, 0, msgBuffer, ssl)
 
             // Decrypt & Process 1 received encrypted message
             if (msg == null) {
                 // If error...
-                AppLog.e("Error iaap_recv_dec_process: enc_len: %d chan: %d %s flags: %01x msg_type: %d", recv_header.enc_len, recv_header.chan, Channel.name(recv_header.chan), recv_header.flags, recv_header.msg_type)
+                AppLog.e("Error iaap_recv_dec_process: enc_len: %d chan: %d %s flags: %01x msg_type: %d", recvHeader.enc_len, recvHeader.chan, Channel.name(recvHeader.chan), recvHeader.flags, recvHeader.msg_type)
                 return -1
             }
 
