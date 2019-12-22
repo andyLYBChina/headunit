@@ -26,7 +26,7 @@ internal class AapReadMultipleMessages(
 
     override fun doRead(connection: AccessoryConnection): Int {
 
-        val size = connection.recvBlocking(recvBuffer, recvBuffer.size, 150)
+        val size = connection.recvBlocking(recvBuffer, recvBuffer.size, 150, false)
         if (size <= 0) {
             //            AppLog.v("recv %d", size);
             return 0

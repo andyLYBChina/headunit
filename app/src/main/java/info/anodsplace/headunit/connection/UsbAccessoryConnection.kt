@@ -173,11 +173,7 @@ class UsbAccessoryConnection(private val usbMgr: UsbManager, private val device:
         }
     }
 
-    override suspend fun recv(buf: ByteArray, length: Int, timeout: Int) = withContext(Dispatchers.IO) {
-        return@withContext recvBlocking(buf, length, timeout)
-    }
-
-    override fun recvBlocking(buf: ByteArray, length: Int, timeout: Int): Int {
+    override fun recvBlocking(buf: ByteArray, length: Int, timeout: Int, readFully: Boolean): Int {
         synchronized(sLock) {
             if (usbDeviceConnected == null) {
                 AppLog.e("Not connected")

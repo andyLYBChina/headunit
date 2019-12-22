@@ -8,9 +8,8 @@ package info.anodsplace.headunit.connection
 
 interface AccessoryConnection {
     val isSingleMessage: Boolean
-    suspend fun recv(buf: ByteArray, length: Int, timeout: Int): Int
     fun sendBlocking(buf: ByteArray, length: Int, timeout: Int): Int
-    fun recvBlocking(buf: ByteArray, length: Int, timeout: Int): Int
+    fun recvBlocking(buf: ByteArray, length: Int, timeout: Int, readFully: Boolean): Int
     val isConnected: Boolean
     suspend fun connect(): Boolean
     fun disconnect()

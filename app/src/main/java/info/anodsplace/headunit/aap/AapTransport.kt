@@ -145,7 +145,7 @@ class AapTransport(
             return false
         }
 
-        ret = connection.recvBlocking(buffer, buffer.size, 1000)
+        ret = connection.recvBlocking(buffer, buffer.size, 1000, false)
         if (ret <= 0) {
             AppLog.e("Version request recv ret: $ret")
             return false
@@ -170,7 +170,7 @@ class AapTransport(
             var size = connection.sendBlocking(bio, bio.size, 1000)
             AppLog.i("SSL BIO sent: %d", size)
 
-            size = connection.recvBlocking(buffer, buffer.size, 1000)
+            size = connection.recvBlocking(buffer, buffer.size, 1000, false)
             AppLog.i("SSL received: %d", size)
             if (size <= 0) {
                 AppLog.i("SSL receive error")

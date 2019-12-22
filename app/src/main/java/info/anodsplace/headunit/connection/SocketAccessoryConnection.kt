@@ -26,6 +26,7 @@ class SocketAccessoryConnection(private val ip: String) : AccessoryConnection {
     override fun sendBlocking(buf: ByteArray, length: Int, timeout: Int): Int {
         return try {
             output!!.write(buf, 0, length)
+            output!!.flush()
             length
         } catch (e: IOException) {
             AppLog.e(e)
@@ -33,14 +34,14 @@ class SocketAccessoryConnection(private val ip: String) : AccessoryConnection {
         }
     }
 
-    override suspend fun recv(buf: ByteArray, length: Int, timeout: Int): Int = withContext(Dispatchers.IO) {
-        return@withContext recvBlocking(buf, length, timeout)
-    }
-
-    override fun recvBlocking(buf: ByteArray, length: Int, timeout: Int): Int {
+    override fun recvBlocking(buf: ByteArray, length: Int, timeout: Int, readFully: Boolean): Int {
         return try {
-            transport.soTimeout = timeout
-            input!!.read(buf,0, length)
+            if (readFully) {
+                input!!.readFully(buf,0, length)
+                length
+            } else {
+                input!!.read(buf, 0, length)
+            }
         } catch (e: IOException) {
             -1
         }
@@ -51,8 +52,9 @@ class SocketAccessoryConnection(private val ip: String) : AccessoryConnection {
 
     override suspend fun connect(): Boolean = withContext(Dispatchers.IO) {
         try {
-            transport.soTimeout = 0
+            transport.soTimeout = 15000
             transport.connect(InetSocketAddress(ip, 5277), 2000)
+            transport.tcpNoDelay = true
             input = DataInputStream(transport.getInputStream())
             output = transport.getOutputStream()
             return@withContext true

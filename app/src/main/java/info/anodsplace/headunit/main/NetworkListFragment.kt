@@ -93,7 +93,11 @@ class NetworkListFragment : Fragment() {
                 holder.removeButton.visibility = View.GONE
             } else {
                 line1 = ipAddress
-                holder.removeButton.visibility = if (position == 1 && currentAddress.isNotEmpty()) View.GONE else View.VISIBLE
+                holder.removeButton.visibility = when (position) {
+                    1 -> View.GONE
+                    2 -> if (currentAddress.isNotEmpty()) View.GONE else View.VISIBLE
+                    else -> View.VISIBLE
+                }
             }
             holder.startButton.setTag(R.integer.key_position, position)
             holder.startButton.text = line1

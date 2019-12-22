@@ -25,7 +25,7 @@ object AppLog {
     }
 
     var LOGGER: Logger = Logger.Android()
-    private const val LOG_LEVEL = Log.VERBOSE
+    private const val LOG_LEVEL = Log.DEBUG
 
     const val TAG = "CAR.HU.J"
     const val LOG_VERBOSE = LOG_LEVEL <= Log.VERBOSE
